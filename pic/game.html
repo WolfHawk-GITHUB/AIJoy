@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>中英文消消乐</title>
+    <style>
+        body {
+            background: #f0f8ff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: "微软雅黑";
+        }
+        #game-container {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            margin: 20px;
+        }
+        .card {
+            width: 80px;
+            height: 80px;
+            background: #FF6B6B;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+        .card.flipped {
+            background: #4ECDC4;
+            transform: rotateY(180deg);
+        }
+        #timer {
+            font-size: 28px;
+            color: #FF5722;
+            margin: 15px;
+        }
+        #controls {
+            margin: 20px;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .custom-file-upload {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>单词消消乐 Word Matching</h1>
+    <div id="controls">
+        <label class="custom-file-upload">
+            📁 导入词库
+            <input type="file" id="wordbook" accept=".txt" />
+        </label>
+        <button onclick="startGame()">▶️ 开始游戏</button>
+    </div>
+    <div id="timer">剩余时间: 60 秒</div>
+	<div id="score">得分: 0</div>
+    <div id="game-container"></div>
+    
+    <audio id="bgm" loop>
+        <source src="https://cdn.pixabay.com/audio/2023/03/27/audio_6f0d5e5b98.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // 默认词库
+        let wordPairs = [
+            ["apple", "苹果"],
+            ["computer", "电脑"],
+            ["sun", "太阳"]
+        ];
+
+        // 游戏变量
+        let selectedCards = [];
+        let score = 0;
+        let timeLeft = 60;
+        let timerId;
+        let gameActive = false;
+
+        // 词库导入功能[3](@ref)
+        document.getElementById('wordbook').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const content = event.target.result;
+                wordPairs = content.split('\n')
+                    .filter(line => line.includes('|'))
+                    .map(line => line.split('|').map(s => s.trim()));
+                alert(`成功导入${wordPairs.length}组词汇`);
+            };
+            reader.readAsText(file, 'UTF-8');
+        });
+
+        // 创建游戏卡片[1](@ref)
+        function createGame() {
+            const container = document.getElementById('game-container');
+            container.innerHTML = '';
+            
+            const allWords = [...wordPairs.flat(), ...wordPairs.flat()];
+            allWords.sort(() => Math.random() - 0.5);
+
+            allWords.forEach(word => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.textContent = word;
+                card.addEventListener('click', () => handleCardClick(card));
+                container.appendChild(card);
+            });
+        }
+
+        // 卡片点击处理[1](@ref)
+        function handleCardClick(card) {
+            if (!gameActive || card.classList.contains('flipped') || selectedCards.length >= 2) return;
+            
+            card.classList.add('flipped');
+            selectedCards.push(card);
+
+            if (selectedCards.length === 2) {
+                setTimeout(checkMatch, 800);
+            }
+        }
+
+        // 匹配检查[1](@ref)
+        function checkMatch() {
+            const [card1, card2] = selectedCards;
+            const text1 = card1.textContent;
+            const text2 = card2.textContent;
+
+            if (wordPairs.some(pair => pair.includes(text1) && pair.includes(text2)))
+			{
+				score += 10;
+                document.getElementById('score').textContent = `得分: ${score} `;
+				 playSound('https://cdn.pixabay.com/download/audio/2021/08/04/audio_bb630cc098.mp3');
+                card1.style.visibility = 'hidden';
+                card2.style.visibility = 'hidden';
+            } else {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+            }
+            selectedCards = [];
+        }
+
+        // 倒计时功能[8](@ref)
+        function startTimer() {
+            timerId = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = `剩余时间: ${timeLeft} 秒`;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timerId);
+                    gameActive = false;
+                    document.getElementById('bgm').pause();
+                    alert('时间到！最终得分: ' + score);
+                }
+            }, 1000);
+        }
+
+        // 开始游戏
+        function startGame() {
+            if (gameActive) return;
+            
+            gameActive = true;
+            timeLeft = 60;
+            score = 0;
+            document.getElementById('bgm').play();
+            createGame();
+            startTimer();
+        }
+
+        // 音效播放
+        function playSound(url) {
+            const audio = new Audio(url);
+            audio.play();
+        }
+    </script>
+</body>
+</html>
